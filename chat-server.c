@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 #define BACKLOG 10
 #define BUF_SIZE 4096
@@ -19,7 +20,7 @@ int main(int arvc, char *argv[]) {
     char *remote_ip;
     char buf[BUF_SIZE];
     int rc;
-    int byte_received;
+    int bytes_received;
 
     listen_port = argv[1];
 
