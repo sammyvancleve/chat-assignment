@@ -17,7 +17,9 @@ int main(int arvc, char *argv[]) {
     uint16_t remote_port;
     socklen_t addrlen;
     char *remote_ip;
+    char buf[BUF_SIZE];
     int rc;
+    int byte_received;
 
     listen_port = argv[1];
 
@@ -44,7 +46,7 @@ int main(int arvc, char *argv[]) {
         remote_port = ntohs(remote_sa.sin_port);
         printf("new connection from %s:%d\n", remote_ip, remote_port);
 
-        while((bytes_received = recv(conn_fd, buf, BUF_SIZE)) > 0) {
+        while((bytes_received = recv(conn_fd, buf, BUF_SIZE, 0)) > 0) {
             printf(".");
             fflush(stdout);
 

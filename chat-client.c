@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <string.h>
 
 #define BUF_SIZE 4096
 
