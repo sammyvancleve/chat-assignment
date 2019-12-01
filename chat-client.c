@@ -37,10 +37,7 @@ int main(int argc, char *argv[]) {
         exit(2);
     }
 
-    pthread_t receive;
-    pthread_t send;
-
-    //while loop until user exits (ctrl-c)
+    //while loop until user exits (ctrl-d)
     //maybe parse input from user before sending?
     //ex for name change...
     while((n = read(0, buf, BUF_SIZE)) > 0) {
@@ -51,6 +48,10 @@ int main(int argc, char *argv[]) {
         printf("received: ");
         puts(buf);
     }
+
+    //send disconnect before exiting
+    strcpy(buf, "/disconnect");
+    send(conn_fd, buf, strlen("/disconnect", 0);
 
     close(conn_fd);
 }
