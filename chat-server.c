@@ -20,8 +20,8 @@
 void *connhandler(void *threadid);
 void sendmessage(char *message, char *user);
 void disconnectstring(char *s, char *user);
-void newnickstring(char *s, char *new, char *old);
 void generateuserstring(char *s, char *client_ip, uint16_t client_port);
+void newnick(char *new, char *old);
 
 struct threadconn {
     socklen_t addrlen;
@@ -99,17 +99,9 @@ void *connhandler(void *threadid) {
         if (strcmp("/disconnect", buf) == 0) {
             break;
         }
-        if (strncmp("/nick", buf, 5) == 0) {
-            char *nick = strtok(buf, " ");
-            nick = strtok(NULL, " ");
-            char s[BUF_SIZE];
-            newnickstring(s, nick, userstring);
-            strcpy(userstring, nick);
-        }
         fflush(stdout);
 
-        //send it back
-        //send(conn.conn_fd, buf, bytes_received, 0);
+	printf("%s\n", buf);
         sendmessage(buf, userstring);
     }
     char s[50];
@@ -133,11 +125,13 @@ void generateuserstring(char *s, char *client_ip, uint16_t client_port) {
     snprintf(s, 50, "unknown (%s:%u)", client_ip, client_port);
 }
 
-void newnickstring(char *s, char *new, char *old) {
-    //TODO figure out more elegant solution for size
-    size_t size = strlen(new) + strlen(old) + 25;
-    snprintf(s, size, "User %s is now known as %s.\n", old, new);
-    sendmessage(s, "");
+void newnick(char *new, char *old) {
+	char s[BUF_SIZE];
+    	snprintf(s, BUF_SIZE, "User %s is now known as %s.\n", old, new);
+	printf("%s", s);
+	sendmessage(s, "");
+	old = new;
+	//strcpy(old, new);
 }
 
 void disconnectstring(char *s, char *user) {
