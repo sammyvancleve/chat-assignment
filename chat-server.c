@@ -17,7 +17,7 @@
 #define BUF_SIZE 4096
 #define NUM_CLIENTS 6
 
-void *connectionhandler(void *threadid);
+void *connhandler(void *threadid);
 void disconnectstring(char *s, char *user);
 
 struct threadconn {
@@ -31,17 +31,10 @@ int main(int arvc, char *argv[]) {
     char *listen_port;
     int listen_fd;
     struct addrinfo hints, *res;
-    //struct sockaddr_in remote_sa;
-    //socklen_t addrlen;
-    //char buf[BUF_SIZE];
     int rc;
 
-    //userinfo strings
-    //char *client_ip;
-    //uint16_t client_port;
-
     pthread_t client_threads[NUM_CLIENTS];
-    struct threadconn client_conns[NUM_CLIENTS];
+    struct threadconn client[NUM_CLIENTS];
 
     listen_port = argv[1];
 
@@ -68,14 +61,10 @@ int main(int arvc, char *argv[]) {
 
         //accept new connection (will block until one appears)
         for (int i = 0; i < NUM_CLIENTS; i++) {
-            client_conns[i].addrlen = sizeof(client_conns[i].remote_sa);
-            client_conns[i].clientnum = i;
-            client_conns[i].conn_fd = accept(listen_fd, (struct sockaddr *)
-            &client_conns[i].remote_sa, &client_conns[i].addrlen);
-            if (pthread_create(&client_threads[i], NULL, connectionhandler,
-            &client_conns[i]) > 0) {
-                printf("spun out thread %d\n", i);
-            }
+            client[i].addrlen = sizeof(client[i].remote_sa);
+            client[i].clientnum = i;
+            client[i].conn_fd = accept(listen_fd, (struct sockaddr *) &client[i].remote_sa, &client[i].addrlen);
+            pthread_create(&client_threads[i], NULL, connhandler, &client[i]);
         }
         for (int i = 0; i < NUM_CLIENTS; i++) {
             pthread_join(client_threads[i], NULL);
@@ -83,12 +72,14 @@ int main(int arvc, char *argv[]) {
     }
 }
 
-void *connectionhandler(void *threadid) {
+void *connhandler(void *threadid) {
     struct threadconn conn = *((struct threadconn *) threadid);
-    char *client_ip;
-    uint16_t client_port;
     int bytes_received;
     char buf[BUF_SIZE];
+
+    //userinfo strings
+    char *client_ip;
+    uint16_t client_port;
 
     //announce communication partner
     client_ip = inet_ntoa(conn.remote_sa.sin_addr);
@@ -96,6 +87,7 @@ void *connectionhandler(void *threadid) {
     char userstring[50];
     snprintf(userstring, 50, "unknown (%s:%u)", client_ip, client_port);
     printf("new connection from %s:%d\n", client_ip, client_port);
+
     while((bytes_received = recv(conn.conn_fd, buf, BUF_SIZE, 0)) > 0) {
         printf("message receieved from client %d\n", conn.clientnum);
         fflush(stdout);
