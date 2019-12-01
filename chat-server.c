@@ -18,6 +18,7 @@
 #define NUM_CLIENTS 6
 
 void *connhandler(void *threadid);
+void sendmessage(char *message, char *user);
 void disconnectstring(char *s, char *user);
 
 struct threadconn {
@@ -25,7 +26,10 @@ struct threadconn {
     struct sockaddr_in remote_sa;
     int conn_fd;
     int clientnum;
+    int active;
 };
+
+static struct threadconn client[NUM_CLIENTS];
 
 int main(int arvc, char *argv[]) {
     char *listen_port;
@@ -34,7 +38,7 @@ int main(int arvc, char *argv[]) {
     int rc;
 
     pthread_t client_threads[NUM_CLIENTS];
-    struct threadconn client[NUM_CLIENTS];
+    //struct threadconn client[NUM_CLIENTS];
 
     listen_port = argv[1];
 
@@ -90,10 +94,14 @@ void *connhandler(void *threadid) {
 
     while((bytes_received = recv(conn.conn_fd, buf, BUF_SIZE, 0)) > 0) {
         printf("message receieved from client %d\n", conn.clientnum);
+	if (strcmp("/disconnect", buf) == 0) {
+		break;
+	}
         fflush(stdout);
 
         //send it back
-        send(conn.conn_fd, buf, bytes_received, 0);
+        //send(conn.conn_fd, buf, bytes_received, 0);
+	sendmessage(buf, userstring);
     }
     char s[50];
     disconnectstring(s, userstring);
@@ -101,9 +109,16 @@ void *connhandler(void *threadid) {
     return NULL;
 }
 
-/*void *sendmessage(void *a) {
-    //function to send message to all active clients
-}*/
+void sendmessage(char *message, char *sender) {
+	char s[150];
+	strcpy(s, sender);
+	strcat(s, ": ");
+	strcat(s, message);
+	for (int i = 0; i < NUM_CLIENTS; i++) {
+		send(client[i].conn_fd, s, strlen(s), 0);
+	}
+	
+}
 
 void newnickstring(char *s, char *new, char *old) {
     //TODO figure out more elegant solution for size
