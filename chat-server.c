@@ -20,6 +20,8 @@
 void *connhandler(void *threadid);
 void sendmessage(char *message, char *user);
 void disconnectstring(char *s, char *user);
+void newnickstring(char *s, char *new, char *old);
+void generateuserstring(char *s, char *client_ip, uint16_t client_port);
 
 struct threadconn {
     socklen_t addrlen;
@@ -89,19 +91,26 @@ void *connhandler(void *threadid) {
     client_ip = inet_ntoa(conn.remote_sa.sin_addr);
     client_port = ntohs(conn.remote_sa.sin_port);
     char userstring[50];
-    snprintf(userstring, 50, "unknown (%s:%u)", client_ip, client_port);
+    generateuserstring(userstring, client_ip, client_port);
     printf("new connection from %s:%d\n", client_ip, client_port);
 
     while((bytes_received = recv(conn.conn_fd, buf, BUF_SIZE, 0)) > 0) {
         printf("message receieved from client %d\n", conn.clientnum);
-	if (strcmp("/disconnect", buf) == 0) {
-		break;
-	}
+        if (strcmp("/disconnect", buf) == 0) {
+            break;
+        }
+        if (strncmp("/nick", buf, 5) == 0) {
+            char *nick = strtok(buf, " ");
+            nick = strtok(NULL, " ");
+            char s[BUF_SIZE];
+            newnickstring(s, nick, userstring);
+            strcpy(userstring, nick);
+        }
         fflush(stdout);
 
         //send it back
         //send(conn.conn_fd, buf, bytes_received, 0);
-	sendmessage(buf, userstring);
+        sendmessage(buf, userstring);
     }
     char s[50];
     disconnectstring(s, userstring);
@@ -110,23 +119,29 @@ void *connhandler(void *threadid) {
 }
 
 void sendmessage(char *message, char *sender) {
-	char s[150];
-	strcpy(s, sender);
-	strcat(s, ": ");
-	strcat(s, message);
-	for (int i = 0; i < NUM_CLIENTS; i++) {
-		send(client[i].conn_fd, s, strlen(s), 0);
-	}
-	
+    char s[150];
+    strcpy(s, sender);
+    strcat(s, ": ");
+    strcat(s, message);
+    for (int i = 0; i < NUM_CLIENTS; i++) {
+        send(client[i].conn_fd, s, strlen(s), 0);
+    }
+
+}
+
+void generateuserstring(char *s, char *client_ip, uint16_t client_port) {
+    snprintf(s, 50, "unknown (%s:%u)", client_ip, client_port);
 }
 
 void newnickstring(char *s, char *new, char *old) {
     //TODO figure out more elegant solution for size
     size_t size = strlen(new) + strlen(old) + 25;
     snprintf(s, size, "User %s is now known as %s.\n", old, new);
+    sendmessage(s, "");
 }
 
 void disconnectstring(char *s, char *user) {
     size_t size = strlen(user) + 25;
     snprintf(s, size, "User %s has disconnected.\n", user);
+    sendmessage(s, "");
 }
