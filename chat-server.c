@@ -3,6 +3,7 @@
  */
 
 #include <stdlib.h>
+#include <time.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -22,6 +23,7 @@ void sendmessage(char *message, char *user);
 void disconnectstring(char *s, char *user);
 void generateuserstring(char *s, char *client_ip, uint16_t client_port);
 void newnick(char *new, char *old);
+void timestring(char *s);
 
 struct threadconn {
     socklen_t addrlen;
@@ -111,10 +113,12 @@ void *connhandler(void *threadid) {
 }
 
 void sendmessage(char *message, char *sender) {
-    char s[150];
-    strcpy(s, sender);
+    char s[BUF_SIZE];
+    timestring(s);
+    strcat(s, sender);
     strcat(s, ": ");
     strcat(s, message);
+    strcat(s, "\n");
     for (int i = 0; i < NUM_CLIENTS; i++) {
         send(client[i].conn_fd, s, strlen(s), 0);
     }
@@ -138,4 +142,12 @@ void disconnectstring(char *s, char *user) {
     size_t size = strlen(user) + 25;
     snprintf(s, size, "User %s has disconnected.\n", user);
     sendmessage(s, "");
+}
+
+void timestring(char *s) {
+    time_t currenttime;
+    struct tm *ts;
+    time(&currenttime);
+    ts = localtime(&currenttime);
+    snprintf(s, "%d:%d:%d", ts->tm_hour, ts->tm_min, ts->tm_sec);
 }
