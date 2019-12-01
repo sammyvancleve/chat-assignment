@@ -1,3 +1,7 @@
+/*
+chat-client.c
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -11,6 +15,7 @@
 int main(int argc, char *argv[]) {
     char *dest_hostname, *dest_port;
     struct addrinfo hints, *res;
+    char buf[BUF_SIZE];
     int conn_fd;
     int n;
     int rc;
@@ -27,14 +32,21 @@ int main(int argc, char *argv[]) {
         perror("getaddrinfo failed: ");
         exit(1);
     }
-    if (connect(conn_fd, res->ai_adr, res->ai_addrlen) < 0) {
+    if (connect(conn_fd, res->ai_addr, res->ai_addrlen) < 0) {
         perror("connect: ");
         exit(2);
     }
 
+    pthread_t receive;
+    pthread_t send;
+
+    //while loop until user exits (ctrl-c)
+    //maybe parse input from user before sending?
+    //ex for name change...
     while((n = read(0, buf, BUF_SIZE)) > 0) {
         send(conn_fd, buf, n, 0);
 
+        //todo separate thread for receiving info from server
         n = recv(conn_fd, buf, BUF_SIZE, 0);
         printf("received: ");
         puts(buf);
