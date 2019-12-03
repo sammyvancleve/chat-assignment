@@ -97,13 +97,10 @@ void *connhandler(void *threadid) {
     printf("new connection from %s:%d\n", client_ip, client_port);
 
     while((bytes_received = recv(conn.conn_fd, buf, BUF_SIZE, 0)) > 0) {
-        printf("message receieved from client %d\n", conn.clientnum);
         if (strcmp("/disconnect", buf) == 0) {
             break;
         }
         fflush(stdout);
-
-	printf("%s\n", buf);
         sendmessage(buf, userstring);
     }
     char s[50];
@@ -113,12 +110,8 @@ void *connhandler(void *threadid) {
 }
 
 void sendmessage(char *message, char *sender) {
-    char s[BUF_SIZE];
-    timestring(s);
-    strcat(s, sender);
-    strcat(s, ": ");
-    strcat(s, message);
-    strcat(s, "\n");
+	char s[BUF_SIZE];
+    snprintf(s, BUF_SIZE, "%s: %s: %s\n", "time", sender, message);
     for (int i = 0; i < NUM_CLIENTS; i++) {
         send(client[i].conn_fd, s, strlen(s), 0);
     }
