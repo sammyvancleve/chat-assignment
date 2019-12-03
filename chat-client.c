@@ -42,6 +42,7 @@ int main(int argc, char *argv[]) {
 
     pthread_t rcvthread;
     pthread_create(&rcvthread, NULL, receive, &conn_fd);
+
     //while loop until user exits (ctrl-d)
     while((n = read(0, buf, BUF_SIZE)) > 0) {
         char *s;
@@ -56,12 +57,10 @@ int main(int argc, char *argv[]) {
     close(conn_fd);
 }
 
-//TODO better condition for while loop (one that is actually useful...)
 void *receive(void *conn_fd) {
     int fd = *((int *)conn_fd);
     char buf[BUF_SIZE];
     while(recv(fd, buf, BUF_SIZE, 0) != 0) {
-        //recv(fd, buf, BUF_SIZE, 0);
         puts(buf);
         fflush(stdout);
     }
