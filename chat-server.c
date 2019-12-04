@@ -104,12 +104,12 @@ void *connhandler(void *threadid) {
             break;
         }
         if (strncmp("/nick", buf, 5) == 0) {
-            char buf2[BUF_MAX];
+            char buf2[BUF_SIZE];
             strcpy(buf2, buf);
             char *s;
-            s = strtok(buf2, "\n");
+            s = strtok(buf2, " ");
             s = strtok(NULL, " ");
-            printf("nick %s\n", s);
+	    newnick(s, userstring);
         }
         sendmessage(buf, userstring);
         pthread_mutex_unlock(&mutex);
@@ -140,12 +140,12 @@ void newuser(char *s, char *client_ip, uint16_t client_port) {
 }
 
 void newnick(char *new, char *old) {
-    size_t size = strlen(new) + strlen(old) + 25;
-    char s[size];
-    snprintf(s, size, "User %s is now known as %s.", old, new);
+    char s[BUF_SIZE];
+    snprintf(s, BUF_SIZE, "%s is now known as %s.", old, new);
     printf("%s", s);
     sendmessage(s, "");
-    old = new;
+    memset(old, 0, strlen(old));
+    strcpy(old, new);
 }
 
 void disconnectstring(char *s, char *user) {
