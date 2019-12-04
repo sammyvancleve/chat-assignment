@@ -31,8 +31,6 @@ struct threadconn {
     socklen_t addrlen;
     struct sockaddr_in remote_sa;
     int conn_fd;
-    int clientnum;
-    int active;
 };
 
 static struct threadconn client[NUM_CLIENTS];
@@ -46,7 +44,6 @@ int main(int arvc, char *argv[]) {
     int rc;
 
     pthread_t client_threads[NUM_CLIENTS];
-    //struct threadconn client[NUM_CLIENTS];
 
     listen_port = argv[1];
 
@@ -74,7 +71,6 @@ int main(int arvc, char *argv[]) {
         //accept new connection (will block until one appears)
         for (int i = 0; i < NUM_CLIENTS; i++) {
             client[i].addrlen = sizeof(client[i].remote_sa);
-            client[i].clientnum = i;
             client[i].conn_fd = accept(listen_fd, (struct sockaddr *) &client[i].remote_sa, &client[i].addrlen);
             pthread_create(&client_threads[i], NULL, connhandler, &client[i]);
         }
@@ -102,16 +98,21 @@ void *connhandler(void *threadid) {
     printf("new connection from %s:%d\n", client_ip, client_port);
 
     while((bytes_received = recv(conn.conn_fd, buf, BUF_SIZE, 0)) > 0) {
-	    pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&mutex);
         fflush(stdout);
         if (strcmp("/disconnect", buf) == 0) {
             break;
         }
-	if (strncmp("/nick", buf, 5) == 0) {
-		//
-	}
+        if (strncmp("/nick", buf, 5) == 0) {
+            char buf2[BUF_MAX];
+            strcpy(buf2, buf);
+            char *s;
+            s = strtok(buf2, "\n");
+            s = strtok(NULL, " ");
+            printf("nick %s\n", s);
+        }
         sendmessage(buf, userstring);
-	    pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&mutex);
     }
     char s[MAX_NICK_LEN+25];
     disconnectstring(s, userstring);
@@ -120,8 +121,8 @@ void *connhandler(void *threadid) {
 }
 
 void sendmessage(char *message, char *sender) {
-	char s[BUF_SIZE];
-	memset(s, 0, BUF_SIZE);
+    char s[BUF_SIZE];
+    memset(s, 0, BUF_SIZE);
     snprintf(s, BUF_SIZE, "%s: %s: %s\n", "time", sender, message);
     for (int i = 0; i < NUM_CLIENTS; i++) {
         send(client[i].conn_fd, s, BUF_SIZE, 0);
@@ -129,9 +130,9 @@ void sendmessage(char *message, char *sender) {
 }
 
 void newconn(char *user) {
-	char s[BUF_SIZE];
-	snprintf(s, BUF_SIZE, "new connection from %s", user);
-	sendmessage(s, "");
+    char s[BUF_SIZE];
+    snprintf(s, BUF_SIZE, "new connection from %s", user);
+    sendmessage(s, "");
 }
 
 void newuser(char *s, char *client_ip, uint16_t client_port) {
@@ -139,13 +140,12 @@ void newuser(char *s, char *client_ip, uint16_t client_port) {
 }
 
 void newnick(char *new, char *old) {
-	size_t size = strlen(new) + strlen(old) + 25;
-	char s[size];
-    	snprintf(s, size, "User %s is now known as %s.", old, new);
-	printf("%s", s);
-	sendmessage(s, "");
-	old = new;
-	//strcpy(old, new);
+    size_t size = strlen(new) + strlen(old) + 25;
+    char s[size];
+    snprintf(s, size, "User %s is now known as %s.", old, new);
+    printf("%s", s);
+    sendmessage(s, "");
+    old = new;
 }
 
 void disconnectstring(char *s, char *user) {

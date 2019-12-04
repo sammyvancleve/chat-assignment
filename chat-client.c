@@ -19,9 +19,7 @@ int main(int argc, char *argv[]) {
     char *dest_hostname, *dest_port;
     struct addrinfo hints, *res;
     char buf[BUF_SIZE];
-    int conn_fd;
-    int n;
-    int rc;
+    int conn_fd, n, rc;
 
     dest_hostname = argv[1];
     dest_port = argv[2];
@@ -49,6 +47,7 @@ int main(int argc, char *argv[]) {
         s = strtok(buf, "\n");
         send(conn_fd, s, n, 0);
     }
+    print("conn broken\n");
 
     //send disconnect before exiting
     strcpy(buf, "/disconnect");
@@ -64,4 +63,6 @@ void *receive(void *conn_fd) {
         puts(buf);
         fflush(stdout);
     }
+    printf("disconnected from server\n");
+    //connection broken
 }
