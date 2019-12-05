@@ -55,18 +55,20 @@ int main(int argc, char *argv[]) {
     strcpy(buf, "/disconnect");
     send(conn_fd, buf, BUF_SIZE, 0);
 
+    printf("exiting from server\n");
     close(conn_fd);
 }
 
 void *receive(void *conn_fd) {
     int fd = *((int *)conn_fd);
     char buf[BUF_SIZE];
-    while(recv(fd, buf, BUF_SIZE, 0) != 0) {
+    while(recv(fd, buf, BUF_SIZE, 0) > 0) {
         char s[TIME_STRING_SIZE];
         gettime(s);
         printf("%s", s);
         puts(buf);
         fflush(stdout);
+        memset(buf, '\0', BUF_SIZE);
     }
     printf("disconnected from server\n");
     exit(0);

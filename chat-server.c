@@ -16,7 +16,7 @@
 
 #define BACKLOG 10
 #define BUF_SIZE 4096
-#define NUM_CLIENTS 6
+#define NUM_CLIENTS 12
 #define MAX_NICK_LEN 75
 
 void *connhandler(void *threadid);
@@ -31,10 +31,12 @@ struct threadconn {
     socklen_t addrlen;
     struct sockaddr_in remote_sa;
     int conn_fd;
-    int active;
+    void *before;
+    void *after;
 };
 
-static struct threadconn client[NUM_CLIENTS];
+static void *first;
+static void *last;
 
 pthread_mutex_t mutex;
 
@@ -43,8 +45,6 @@ int main(int arvc, char *argv[]) {
     int listen_fd;
     struct addrinfo hints, *res;
     int rc;
-
-    pthread_t client_threads[NUM_CLIENTS];
 
     listen_port = argv[1];
 
@@ -66,18 +66,32 @@ int main(int arvc, char *argv[]) {
 
     /* infinite loop accepting new connections and handling them */
     while(1) {
-        //how to send something to all threads thats been received
-        //from one...
-
         //accept new connection (will block until one appears)
-        for (int i = 0; i < NUM_CLIENTS; i++) {
-            client[i].addrlen = sizeof(client[i].remote_sa);
-            client[i].conn_fd = accept(listen_fd, (struct sockaddr *) &client[i].remote_sa, &client[i].addrlen);
-            pthread_create(&client_threads[i], NULL, connhandler, &client[i]);
-	    printf("spun out thread\n");
-        }
-        for (int i = 0; i < NUM_CLIENTS; i++) {
-            pthread_join(client_threads[i], NULL);
+        if (last == NULL && first == NULL) {
+            pthread_t clientthread;
+            void *structaddr = malloc(sizeof(struct threadconn));
+            struct threadconn *clientstruct = structaddr;
+            last = structaddr;
+            first = structaddr;
+            clientstruct->before = NULL;
+            clientstruct->after = NULL;
+            clientstruct->addrlen = sizeof(clientstruct->remote_sa);
+            clientstruct->conn_fd = accept(listen_fd, (struct sockaddr *)
+                    &clientstruct->remote_sa, &clientstruct->addrlen);
+            pthread_create(&clientthread, NULL, connhandler, clientstruct);
+        } else {
+            pthread_t clientthread;
+            void *structaddr = malloc(sizeof(struct threadconn));
+            struct threadconn *clientstruct = structaddr;
+            clientstruct->before = last;
+            clientstruct->after = NULL;
+            struct threadconn *laststruct = last;
+            laststruct->after = structaddr;
+            last = structaddr;
+            clientstruct->addrlen = sizeof(clientstruct->remote_sa);
+            clientstruct->conn_fd = accept(listen_fd, (struct sockaddr *)
+                    &clientstruct->remote_sa, &clientstruct->addrlen);
+            pthread_create(&clientthread, NULL, connhandler, clientstruct);
         }
     }
 }
@@ -110,7 +124,8 @@ void *connhandler(void *threadid) {
             char *s;
             s = strtok(buf2, " ");
             s = strtok(NULL, " ");
-	    newnick(s, userstring);
+            newnick(s, userstring);
+            continue;
         }
         pthread_mutex_lock(&mutex);
         sendmessage(buf, userstring);
@@ -120,15 +135,39 @@ void *connhandler(void *threadid) {
     disconnectstring(s, userstring);
     printf("user %s has disconnected\n", userstring);
     close(conn.conn_fd);
+
+    if (first == threadid) {
+        if (conn.after == NULL) {
+            first = NULL;
+            last = NULL;
+        } else {
+            first = conn.after;
+            struct threadconn *afterstruct = conn.after;
+            afterstruct->before = NULL;
+        }
+    } else if (last == threadid) {
+        last = conn.before;
+        struct threadconn *beforestruct = conn.before;
+        beforestruct->after = NULL;
+    } else {
+        struct threadconn *beforestruct = conn.before;
+        struct threadconn *afterstruct = conn.after;
+        beforestruct->after = conn.after;
+        afterstruct->before = conn.before;
+    }
+
     return NULL;
 }
 
 void sendmessage(char *message, char *sender) {
     char s[BUF_SIZE];
     memset(s, 0, BUF_SIZE);
-    snprintf(s, BUF_SIZE, "%s: %s\n", sender, message);
-    for (int i = 0; i < NUM_CLIENTS; i++) {
-        send(client[i].conn_fd, s, BUF_SIZE, 0);
+    snprintf(s, BUF_SIZE, "%s: %s", sender, message);
+    void *sendaddr = first;
+    while (sendaddr != NULL) {
+        struct threadconn *sendclient = sendaddr;
+        send(sendclient->conn_fd, s, BUF_SIZE, 0);
+        sendaddr = sendclient->after;
     }
 }
 
