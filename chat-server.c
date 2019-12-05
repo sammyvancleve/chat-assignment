@@ -18,13 +18,12 @@
 #define BUF_SIZE 4096
 #define MAX_NICK_LEN 75
 
-void *connhandler(void *threadid);
+void *connhandler(void *structaddr);
 void sendmessage(char *message, char *user);
 void disconnectstring(char *s, char *user);
 void newuser(char *s, char *client_ip, uint16_t client_port);
 void newconn(char *user);
 void newnick(char *new, char *old);
-void timestring(char *s);
 
 struct threadconn {
     socklen_t addrlen;
@@ -63,40 +62,38 @@ int main(int arvc, char *argv[]) {
     //start listening
     listen(listen_fd, BACKLOG);
 
-    /* infinite loop accepting new connections and handling them */
+    //infinite loop accepting new connections and handling them
     while(1) {
         //accept new connection (will block until one appears)
         if (last == NULL && first == NULL) {
             pthread_t clientthread;
             void *structaddr = malloc(sizeof(struct threadconn));
-            struct threadconn *clientstruct = structaddr;
+            struct threadconn *client = structaddr;
             last = structaddr;
             first = structaddr;
-            clientstruct->before = NULL;
-            clientstruct->after = NULL;
-            clientstruct->addrlen = sizeof(clientstruct->remote_sa);
-            clientstruct->conn_fd = accept(listen_fd, (struct sockaddr *)
-                    &clientstruct->remote_sa, &clientstruct->addrlen);
-            pthread_create(&clientthread, NULL, connhandler, clientstruct);
+            client->before = NULL;
+            client->after = NULL;
+            client->addrlen = sizeof(client->remote_sa);
+            client->conn_fd = accept(listen_fd, (struct sockaddr *) &client->remote_sa, &client->addrlen);
+            pthread_create(&clientthread, NULL, connhandler, client);
         } else {
             pthread_t clientthread;
             void *structaddr = malloc(sizeof(struct threadconn));
-            struct threadconn *clientstruct = structaddr;
-            clientstruct->before = last;
-            clientstruct->after = NULL;
+            struct threadconn *client= structaddr;
+            client->before = last;
+            client->after = NULL;
             struct threadconn *laststruct = last;
             laststruct->after = structaddr;
             last = structaddr;
-            clientstruct->addrlen = sizeof(clientstruct->remote_sa);
-            clientstruct->conn_fd = accept(listen_fd, (struct sockaddr *)
-                    &clientstruct->remote_sa, &clientstruct->addrlen);
-            pthread_create(&clientthread, NULL, connhandler, clientstruct);
+            client->addrlen = sizeof(client->remote_sa);
+            client->conn_fd = accept(listen_fd, (struct sockaddr *) &client->remote_sa, &client->addrlen);
+            pthread_create(&clientthread, NULL, connhandler, client);
         }
     }
 }
 
-void *connhandler(void *threadid) {
-    struct threadconn conn = *((struct threadconn *) threadid);
+void *connhandler(void *structaddr) {
+    struct threadconn conn = *((struct threadconn *) structaddr);
     int bytes_received;
     char buf[BUF_SIZE];
 
@@ -127,12 +124,13 @@ void *connhandler(void *threadid) {
         sendmessage(buf, userstring);
         pthread_mutex_unlock(&mutex);
     }
-    char s[MAX_NICK_LEN+25];
+    char s[BUF_SIZE];
     disconnectstring(s, userstring);
     printf("user %s has disconnected\n", userstring);
     close(conn.conn_fd);
 
-    if (first == threadid) {
+    //remove node for thread from doubly linked list
+    if (first == structaddr) {
         if (conn.after == NULL) {
             first = NULL;
             last = NULL;
@@ -141,7 +139,7 @@ void *connhandler(void *threadid) {
             struct threadconn *afterstruct = conn.after;
             afterstruct->before = NULL;
         }
-    } else if (last == threadid) {
+    } else if (last == structaddr) {
         last = conn.before;
         struct threadconn *beforestruct = conn.before;
         beforestruct->after = NULL;
@@ -157,7 +155,6 @@ void *connhandler(void *threadid) {
 
 void sendmessage(char *message, char *sender) {
     char s[BUF_SIZE];
-    memset(s, 0, BUF_SIZE);
     snprintf(s, BUF_SIZE, "%s: %s", sender, message);
     void *sendaddr = first;
     while (sendaddr != NULL) {
@@ -180,14 +177,13 @@ void newuser(char *s, char *client_ip, uint16_t client_port) {
 void newnick(char *new, char *old) {
     char s[BUF_SIZE];
     snprintf(s, BUF_SIZE, "%s is now known as %s.", old, new);
-    printf("%s", s);
+    printf("%s\n", s);
     sendmessage(s, "");
     memset(old, 0, strlen(old));
     strcpy(old, new);
 }
 
 void disconnectstring(char *s, char *user) {
-    size_t size = strlen(user) + 25;
-    snprintf(s, size, "User %s has disconnected.\n", user);
+    snprintf(s, BUF_SIZE, "%s has disconnected.", user);
     sendmessage(s, "");
 }

@@ -3,6 +3,7 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -12,7 +13,7 @@
 #include <string.h>
 
 #define BUF_SIZE 4096
-#define TIME_STRING_SIZE 15
+#define TIME_LENGTH 15
 
 void *receive(void *conn_fd);
 void gettime(char *s);
@@ -49,9 +50,8 @@ int main(int argc, char *argv[]) {
         s = strtok(buf, "\n");
         send(conn_fd, s, n, 0);
     }
-    //printf("conn broken\n");
 
-    printf("exiting from server\n");
+    printf("disconnecting from server\n");
     close(conn_fd);
 }
 
@@ -59,7 +59,7 @@ void *receive(void *conn_fd) {
     int fd = *((int *)conn_fd);
     char buf[BUF_SIZE];
     while(recv(fd, buf, BUF_SIZE, 0) > 0) {
-        char s[TIME_STRING_SIZE];
+        char s[TIME_LENGTH];
         gettime(s);
         printf("%s", s);
         puts(buf);
@@ -77,5 +77,5 @@ void gettime(char *s) {
     int hr = local->tm_hour;
     int min = local->tm_min;
     int sec = local->tm_sec;
-    snprintf(s, TIME_STRING_SIZE, "%d:%d:%d: ", hr, min, sec);
+    snprintf(s, TIME_LENGTH, "%d:%d:%d: ", hr, min, sec);
 }
