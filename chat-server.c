@@ -31,6 +31,7 @@ struct threadconn {
     socklen_t addrlen;
     struct sockaddr_in remote_sa;
     int conn_fd;
+    int active;
 };
 
 static struct threadconn client[NUM_CLIENTS];
@@ -99,7 +100,6 @@ void *connhandler(void *threadid) {
     printf("new connection from %s:%d\n", client_ip, client_port);
 
     while((bytes_received = recv(conn.conn_fd, buf, BUF_SIZE, 0)) > 0) {
-        pthread_mutex_lock(&mutex);
         fflush(stdout);
         if (strcmp("/disconnect", buf) == 0) {
             break;
@@ -112,6 +112,7 @@ void *connhandler(void *threadid) {
             s = strtok(NULL, " ");
 	    newnick(s, userstring);
         }
+        pthread_mutex_lock(&mutex);
         sendmessage(buf, userstring);
         pthread_mutex_unlock(&mutex);
     }
@@ -154,12 +155,4 @@ void disconnectstring(char *s, char *user) {
     size_t size = strlen(user) + 25;
     snprintf(s, size, "User %s has disconnected.\n", user);
     sendmessage(s, "");
-}
-
-void timestring(char *s) {
-    time_t currenttime;
-    struct tm *ts;
-    time(&currenttime);
-    ts = localtime(&currenttime);
-    snprintf(s, "%d:%d:%d", ts->tm_hour, ts->tm_min, ts->tm_sec);
 }
