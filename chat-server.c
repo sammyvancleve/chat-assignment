@@ -73,6 +73,7 @@ int main(int arvc, char *argv[]) {
             client[i].addrlen = sizeof(client[i].remote_sa);
             client[i].conn_fd = accept(listen_fd, (struct sockaddr *) &client[i].remote_sa, &client[i].addrlen);
             pthread_create(&client_threads[i], NULL, connhandler, &client[i]);
+	    printf("spun out thread\n");
         }
         for (int i = 0; i < NUM_CLIENTS; i++) {
             pthread_join(client_threads[i], NULL);
@@ -116,6 +117,7 @@ void *connhandler(void *threadid) {
     }
     char s[MAX_NICK_LEN+25];
     disconnectstring(s, userstring);
+    printf("user %s has disconnected\n", userstring);
     close(conn.conn_fd);
     return NULL;
 }
@@ -123,7 +125,7 @@ void *connhandler(void *threadid) {
 void sendmessage(char *message, char *sender) {
     char s[BUF_SIZE];
     memset(s, 0, BUF_SIZE);
-    snprintf(s, BUF_SIZE, "%s: %s: %s\n", "time", sender, message);
+    snprintf(s, BUF_SIZE, "%s: %s\n", sender, message);
     for (int i = 0; i < NUM_CLIENTS; i++) {
         send(client[i].conn_fd, s, BUF_SIZE, 0);
     }
