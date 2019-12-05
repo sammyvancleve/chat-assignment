@@ -51,10 +51,6 @@ int main(int argc, char *argv[]) {
     }
     //printf("conn broken\n");
 
-    //send disconnect before exiting
-    strcpy(buf, "/disconnect");
-    send(conn_fd, buf, BUF_SIZE, 0);
-
     printf("exiting from server\n");
     close(conn_fd);
 }

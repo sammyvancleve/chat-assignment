@@ -16,7 +16,6 @@
 
 #define BACKLOG 10
 #define BUF_SIZE 4096
-#define NUM_CLIENTS 12
 #define MAX_NICK_LEN 75
 
 void *connhandler(void *threadid);
@@ -115,9 +114,6 @@ void *connhandler(void *threadid) {
 
     while((bytes_received = recv(conn.conn_fd, buf, BUF_SIZE, 0)) > 0) {
         fflush(stdout);
-        if (strcmp("/disconnect", buf) == 0) {
-            break;
-        }
         if (strncmp("/nick", buf, 5) == 0) {
             char buf2[BUF_SIZE];
             strcpy(buf2, buf);
