@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     pthread_t rcvthread;
     pthread_create(&rcvthread, NULL, receive, &conn_fd);
 
-    //while loop until user exits (ctrl-d)
+    //while loop until eof (ctrl-d)
     while((n = read(0, buf, BUF_SIZE)) > 0) {
         char *s;
         s = strtok(buf, "\n");
@@ -59,9 +59,9 @@ void *receive(void *conn_fd) {
     int fd = *((int *)conn_fd);
     char buf[BUF_SIZE];
     while(recv(fd, buf, BUF_SIZE, 0) > 0) {
-        char s[TIME_LENGTH];
-        gettime(s);
-        printf("%s", s);
+        char timestamp[TIME_LENGTH];
+        gettime(timestamp);
+        printf("%s", timestamp);
         puts(buf);
         fflush(stdout);
         memset(buf, '\0', BUF_SIZE);

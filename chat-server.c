@@ -28,10 +28,11 @@ struct threadconn {
     socklen_t addrlen;
     struct sockaddr_in remote_sa;
     int conn_fd;
-    void *before;
-    void *after;
+    void *prev;
+    void *next;
 };
 
+//pointers to nodes in doubly linked list
 static void *first;
 static void *last;
 
@@ -67,19 +68,22 @@ int main(int arvc, char *argv[]) {
         pthread_t clientthread;
         void *structaddr = malloc(sizeof(struct threadconn));
         struct threadconn *client= structaddr;
-        //if only one client is connected
+
+        //add node to doubly linked list
         if (last == NULL && first == NULL) {
+            //if only one client is connected...
             last = structaddr;
             first = structaddr;
-            client->before = NULL;
-            client->after = NULL;
+            client->prev = NULL;
+            client->next = NULL;
         } else {
-            client->before = last;
-            client->after = NULL;
+            client->prev = last;
+            client->next = NULL;
             struct threadconn *laststruct = last;
-            laststruct->after = structaddr;
+            laststruct->next = structaddr;
             last = structaddr;
         }
+
         client->addrlen = sizeof(client->remote_sa);
         client->conn_fd = accept(listen_fd, (struct sockaddr *) &client->remote_sa, &client->addrlen);
         pthread_create(&clientthread, NULL, connhandler, client);
@@ -109,9 +113,10 @@ void *connhandler(void *structaddr) {
             char buf2[BUF_SIZE];
             strcpy(buf2, buf);
             char *nickname;
+            //parse buf to find nick
             nickname = strtok(buf2, " ");
             nickname = strtok(NULL, " ");
-            newnick(s, userstring);
+            newnick(nickname, userstring);
             continue;
         }
         pthread_mutex_lock(&mutex);
@@ -122,26 +127,25 @@ void *connhandler(void *structaddr) {
     printf("user %s has disconnected\n", userstring);
     close(conn.conn_fd);
 
-    //remove node from doubly linked
-    //list after connection finishes
+    //remove node from doubly linked list after connection closed
     if (first == structaddr) {
-        if (conn.after == NULL) {
+        if (conn.next == NULL) {
             first = NULL;
             last = NULL;
         } else {
-            first = conn.after;
-            struct threadconn *afterstruct = conn.after;
-            afterstruct->before = NULL;
+            first = conn.next;
+            struct threadconn *nextstruct = conn.next;
+            nextstruct->prev= NULL;
         }
     } else if (last == structaddr) {
-        last = conn.before;
-        struct threadconn *beforestruct = conn.before;
-        beforestruct->after = NULL;
+        last = conn.prev;
+        struct threadconn *prevstruct = conn.prev;
+        prevstruct->next = NULL;
     } else {
-        struct threadconn *beforestruct = conn.before;
-        struct threadconn *afterstruct = conn.after;
-        beforestruct->after = conn.after;
-        afterstruct->before = conn.before;
+        struct threadconn *prevstruct = conn.prev;
+        struct threadconn *nextstruct = conn.next;
+        prevstruct->next = conn.next;
+        nextstruct->prev = conn.prev;
     }
 
     return NULL;
@@ -154,7 +158,7 @@ void sendmessage(char *message, char *sender) {
     while (sendaddr != NULL) {
         struct threadconn *sendclient = sendaddr;
         send(sendclient->conn_fd, s, BUF_SIZE, 0);
-        sendaddr = sendclient->after;
+        sendaddr = sendclient->next;
     }
 }
 
