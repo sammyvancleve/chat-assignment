@@ -1,6 +1,6 @@
 /*
    chat-server.c
-*/
+ */
 
 #include <stdlib.h>
 #include <time.h>
@@ -57,7 +57,10 @@ int main(int arvc, char *argv[]) {
         exit(1);
     }
 
-    bind(listen_fd, res->ai_addr, res->ai_addrlen);
+    if (bind(listen_fd, res->ai_addr, res->ai_addrlen) == -1) {
+        perror("bind failed");
+        exit(1);
+    }
 
     //start listening
     listen(listen_fd, BACKLOG);
@@ -111,7 +114,7 @@ void *connhandler(void *structaddr) {
 
     while((bytes_received = recv(conn->conn_fd, buf, BUF_SIZE, 0)) > 0) {
         fflush(stdout);
-        if (strncmp("/nick", buf, 5) == 0) {
+        if (strncmp("/nick ", buf, 6) == 0) {
             char buf2[BUF_SIZE];
             strcpy(buf2, buf);
             char *nickname;
@@ -155,7 +158,11 @@ void *connhandler(void *structaddr) {
 
 void sendmessage(char *message, char *sender) {
     char s[BUF_SIZE];
-    snprintf(s, BUF_SIZE, "%s: %s", sender, message);
+    if (sender != NULL) {
+        snprintf(s, BUF_SIZE, "%s: %s", sender, message);
+    } else {
+        snprintf(s, BUF_SIZE, "%s", message);
+    }
     void *sendaddr = first;
     while (sendaddr != NULL) {
         struct threadconn *sendclient = sendaddr;
@@ -167,14 +174,14 @@ void sendmessage(char *message, char *sender) {
 void newconn(char *user) {
     char s[BUF_SIZE];
     snprintf(s, BUF_SIZE, "new connection from %s", user);
-    sendmessage(s, "");
+    sendmessage(s, NULL);
 }
 
 void newnick(char *new, char *old) {
     char s[BUF_SIZE];
     snprintf(s, BUF_SIZE, "%s is now known as %s.", old, new);
     printf("%s\n", s);
-    sendmessage(s, "");
+    sendmessage(s, NULL);
     memset(old, 0, strlen(old));
     strcpy(old, new);
 }
@@ -182,5 +189,5 @@ void newnick(char *new, char *old) {
 void disconnectstring(char *user) {
     char s[BUF_SIZE];
     snprintf(s, BUF_SIZE, "%s has disconnected.", user);
-    sendmessage(s, "");
+    sendmessage(s, NULL);
 }
