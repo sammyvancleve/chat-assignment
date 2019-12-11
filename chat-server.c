@@ -69,6 +69,7 @@ int main(int arvc, char *argv[]) {
         void *structaddr = malloc(sizeof(struct threadconn));
         struct threadconn *client= structaddr;
 
+        pthread_mutex_lock(&mutex);
         //add node to doubly linked list
         if (last == NULL && first == NULL) {
             //if only one client is connected...
@@ -83,6 +84,7 @@ int main(int arvc, char *argv[]) {
             laststruct->next = structaddr;
             last = structaddr;
         }
+        pthread_mutex_unlock(&mutex);
 
         client->addrlen = sizeof(client->remote_sa);
         client->conn_fd = accept(listen_fd, (struct sockaddr *) &client->remote_sa, &client->addrlen);
@@ -91,7 +93,7 @@ int main(int arvc, char *argv[]) {
 }
 
 void *connhandler(void *structaddr) {
-    struct threadconn conn = *((struct threadconn *) structaddr);
+    struct threadconn *conn = (struct threadconn *) structaddr;
     int bytes_received;
     char buf[BUF_SIZE];
 
@@ -100,14 +102,14 @@ void *connhandler(void *structaddr) {
     uint16_t client_port;
 
     //announce communication partner
-    client_ip = inet_ntoa(conn.remote_sa.sin_addr);
-    client_port = ntohs(conn.remote_sa.sin_port);
+    client_ip = inet_ntoa(conn->remote_sa.sin_addr);
+    client_port = ntohs(conn->remote_sa.sin_port);
     char userstring[MAX_NICK_LEN];
     snprintf(userstring, MAX_NICK_LEN, "User unknown (%s:%u)", client_ip, client_port);
     newconn(userstring);
     printf("new connection from %s:%d\n", client_ip, client_port);
 
-    while((bytes_received = recv(conn.conn_fd, buf, BUF_SIZE, 0)) > 0) {
+    while((bytes_received = recv(conn->conn_fd, buf, BUF_SIZE, 0)) > 0) {
         fflush(stdout);
         if (strncmp("/nick", buf, 5) == 0) {
             char buf2[BUF_SIZE];
@@ -119,34 +121,34 @@ void *connhandler(void *structaddr) {
             newnick(nickname, userstring);
             continue;
         }
-        pthread_mutex_lock(&mutex);
         sendmessage(buf, userstring);
-        pthread_mutex_unlock(&mutex);
     }
     disconnectstring(userstring);
     printf("user %s has disconnected\n", userstring);
-    close(conn.conn_fd);
+    close(conn->conn_fd);
 
     //remove node from doubly linked list after connection closed
+    pthread_mutex_lock(&mutex);
     if (first == structaddr) {
-        if (conn.next == NULL) {
+        if (conn->next == NULL) {
             first = NULL;
             last = NULL;
         } else {
-            first = conn.next;
-            struct threadconn *nextstruct = conn.next;
+            first = conn->next;
+            struct threadconn *nextstruct = conn->next;
             nextstruct->prev= NULL;
         }
     } else if (last == structaddr) {
-        last = conn.prev;
-        struct threadconn *prevstruct = conn.prev;
+        last = conn->prev;
+        struct threadconn *prevstruct = conn->prev;
         prevstruct->next = NULL;
     } else {
-        struct threadconn *prevstruct = conn.prev;
-        struct threadconn *nextstruct = conn.next;
-        prevstruct->next = conn.next;
-        nextstruct->prev = conn.prev;
+        struct threadconn *prevstruct = conn->prev;
+        struct threadconn *nextstruct = conn->next;
+        prevstruct->next = conn->next;
+        nextstruct->prev = conn->prev;
     }
+    pthread_mutex_unlock(&mutex);
 
     return NULL;
 }
