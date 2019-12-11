@@ -46,7 +46,10 @@ int main(int arvc, char *argv[]) {
 
     listen_port = argv[1];
 
-    listen_fd = socket(PF_INET, SOCK_STREAM, 0);
+    if ((listen_fd = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
+        perror("socket: ");
+        exit (1);
+    }
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -58,12 +61,15 @@ int main(int arvc, char *argv[]) {
     }
 
     if (bind(listen_fd, res->ai_addr, res->ai_addrlen) == -1) {
-        perror("bind failed");
+        perror("bind: ");
         exit(1);
     }
 
     //start listening
-    listen(listen_fd, BACKLOG);
+    if (listen(listen_fd, BACKLOG) == -1) {
+        perror("listen: ");
+        exit(1);
+    }
 
     //infinite loop accepting new connections and handling them
     while(1) {
@@ -128,7 +134,9 @@ void *connhandler(void *structaddr) {
     }
     disconnectstring(userstring);
     printf("user %s has disconnected\n", userstring);
-    close(conn->conn_fd);
+    if (close(conn->conn_fd) == -1) {
+        perror("error closing file descriptor");
+    }
 
     //remove node from doubly linked list after connection closed
     pthread_mutex_lock(&mutex);
