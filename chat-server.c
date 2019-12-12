@@ -48,7 +48,7 @@ int main(int arvc, char *argv[]) {
 
     if ((listen_fd = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket: ");
-        exit (1);
+        exit(1);
     }
 
     memset(&hints, 0, sizeof(hints));
@@ -130,7 +130,9 @@ void *connhandler(void *structaddr) {
             newnick(nickname, userstring);
             continue;
         }
+        pthread_mutex_lock(&mutex);
         sendmessage(buf, userstring);
+        pthread_mutex_unlock(&mutex);
     }
     disconnectstring(userstring);
     printf("user %s has disconnected\n", userstring);

@@ -27,7 +27,10 @@ int main(int argc, char *argv[]) {
     dest_hostname = argv[1];
     dest_port = argv[2];
 
-    conn_fd = socket(PF_INET, SOCK_STREAM, 0);
+    if ((conn_fd = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
+        perror("socket: ");
+        exit(1);
+    }
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
